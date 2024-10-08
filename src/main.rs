@@ -17,7 +17,7 @@ lazy_static! {
 
 mod proxy_api;
 
-async fn proxy(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+async fn proxy(mut req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let proxy_connector = {
         let proxies_mutex = PROXIES_API.lock().await;
         let proxies = proxies_mutex.clone();
@@ -30,7 +30,6 @@ async fn proxy(req: Request<Body>) -> Result<Response<Body>, Infallible> {
         proxy_connector
     };
     let client = Client::builder().build(proxy_connector);
-
     // Build the request to forward
     let uri_string = format!("https://{}{}", req.uri().host().unwrap(), req.uri().path());
     let uri: Uri = uri_string.parse().unwrap();
@@ -67,9 +66,9 @@ async fn main() {
     // Create and run the server
     let server = Server::bind(&addr).serve(make_svc);
 
-    println!("Listening on https://{}", addr);
-
     refresh_proxies_api().await;
+
+    println!("Listening on https://{}", addr);
 
     tokio::spawn(async {
         let sched = JobScheduler::new().await.unwrap();
